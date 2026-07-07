@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gatling Monitor</title>
   <link rel="stylesheet" th:href="@{/css/style.css}">
+  <script th:src="@{/js/jsencrypt.min.js}"></script>
 </head>
 <body>
 <div id="auth-overlay" class="popup-overlay">
@@ -144,6 +145,11 @@
   let pollTimer = null;
   let refreshPending = initiallyUpdating;
   let cachedPublicKey = null;
+  let cachedPublicKeyPem = null;
+
+  function canUseSubtleCrypto() {
+    return window.isSecureContext && window.crypto && window.crypto.subtle;
+  }
 
   function submitAutoRefresh(checkbox) {
     const hidden = document.getElementById('auto-refresh-hidden');
@@ -194,8 +200,8 @@
   }
 
   async function loadPublicKey() {
-    if (cachedPublicKey) {
-      return cachedPublicKey;
+    if (cachedPublicKey && cachedPublicKeyPem) {
+      return { publicKey: cachedPublicKey, publicKeyPem: cachedPublicKeyPem };
     }
     const response = await fetch('/api/auth/public-key');
     if (!response.ok) {
@@ -203,7 +209,8 @@
     }
     const data = await response.json();
     cachedPublicKey = data.publicKey;
-    return cachedPublicKey;
+    cachedPublicKeyPem = data.publicKeyPem;
+    return data;
   }
 
   function base64ToBytes(base64) {
@@ -223,9 +230,9 @@
     return btoa(binary);
   }
 
-  async function encryptCredentials(username, password) {
-    const publicKeyBase64 = await loadPublicKey();
-    const keyData = base64ToBytes(publicKeyBase64);
+  async function encryptWithSubtle(username, password) {
+    const keyInfo = await loadPublicKey();
+    const keyData = base64ToBytes(keyInfo.publicKey);
     const publicKey = await crypto.subtle.importKey(
       'spki',
       keyData,
@@ -235,7 +242,30 @@
     );
     const plain = new TextEncoder().encode(JSON.stringify({ username, password }));
     const encrypted = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, plain);
-    return bytesToBase64(new Uint8Array(encrypted));
+    return { payload: bytesToBase64(new Uint8Array(encrypted)) };
+  }
+
+  async function encryptWithJsEncrypt(username, password) {
+    const keyInfo = await loadPublicKey();
+    const encryptor = new JSEncrypt();
+    encryptor.setPublicKey(keyInfo.publicKeyPem);
+    const usernamePayload = encryptor.encrypt(username);
+    const passwordPayload = encryptor.encrypt(password);
+    if (!usernamePayload || !passwordPayload) {
+      throw new Error('jsencrypt failed');
+    }
+    return { usernamePayload, passwordPayload };
+  }
+
+  async function encryptCredentials(username, password) {
+    if (canUseSubtleCrypto()) {
+      try {
+        return await encryptWithSubtle(username, password);
+      } catch (e) {
+        // fallback below
+      }
+    }
+    return encryptWithJsEncrypt(username, password);
   }
 
   async function submitEncryptedRefresh(username, password) {
@@ -244,7 +274,7 @@
     document.getElementById('auth-error').textContent = '';
 
     try {
-      const payload = await encryptCredentials(username, password);
+      const encrypted = await encryptCredentials(username, password);
       closeAuthModal();
 
       refreshPending = true;
@@ -254,7 +284,7 @@
       const response = await fetch('/api/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload })
+        body: JSON.stringify(encrypted)
       });
 
       if (!response.ok) {
@@ -281,7 +311,10 @@
     } catch (e) {
       refreshPending = false;
       setUpdatingUi(false);
-      document.getElementById('auth-error').textContent = 'Не удалось отправить креды';
+      const hint = canUseSubtleCrypto()
+        ? 'Не удалось отправить креды'
+        : 'Не удалось зашифровать креды (проверьте jsencrypt)';
+      document.getElementById('auth-error').textContent = e && e.message ? hint + ': ' + e.message : hint;
       document.getElementById('auth-overlay').classList.add('visible');
     } finally {
       submitBtn.disabled = false;

@@ -50,6 +50,7 @@ public class MonitorController {
   public Map<String, String> publicKey() {
     Map<String, String> body = new HashMap<>();
     body.put("publicKey", credentialCryptoService.getPublicKeyBase64());
+    body.put("publicKeyPem", credentialCryptoService.getPublicKeyPem());
     return body;
   }
 
@@ -57,7 +58,15 @@ public class MonitorController {
   @ResponseBody
   public Map<String, Object> refreshApi(@RequestBody EncryptedPayloadRequest request) {
     Map<String, Object> body = new HashMap<>();
-    if (request == null || request.getPayload() == null || request.getPayload().isBlank()) {
+    boolean hasSplitPayload =
+        request != null
+            && request.getUsernamePayload() != null
+            && !request.getUsernamePayload().isBlank()
+            && request.getPasswordPayload() != null
+            && !request.getPasswordPayload().isBlank();
+    boolean hasSinglePayload =
+        request != null && request.getPayload() != null && !request.getPayload().isBlank();
+    if (!hasSplitPayload && !hasSinglePayload) {
       body.put("started", false);
       body.put("authRequired", true);
       return body;
@@ -65,7 +74,11 @@ public class MonitorController {
 
     SshCredentials credentials;
     try {
-      credentials = credentialCryptoService.decryptCredentials(request.getPayload());
+      credentials =
+          credentialCryptoService.decryptCredentials(
+              request.getPayload(),
+              request.getUsernamePayload(),
+              request.getPasswordPayload());
     } catch (IllegalArgumentException ex) {
       body.put("started", false);
       body.put("authFailed", true);
