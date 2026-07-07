@@ -498,6 +498,42 @@ body::before {
   color: #ffb4b4;
 }
 
+.popup-auth {
+  border-color: rgba(0, 255, 159, 0.35);
+  box-shadow: 0 0 40px rgba(0, 255, 159, 0.1);
+  text-align: left;
+  width: min(100%, 400px);
+}
+
+.popup-title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  color: var(--accent);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.popup-hint {
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.auth-error {
+  margin: 0;
+  min-height: 1rem;
+  font-size: 0.8rem;
+  color: #ff9b9b;
+}
+
 .popup-btn {
   font-family: var(--mono);
   font-size: 0.78rem;

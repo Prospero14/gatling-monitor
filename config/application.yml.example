@@ -1,0 +1,8 @@
+# Переопределение списка генераторов рядом с JAR (опционально)
+
+monitor:
+  generators:
+    - name: generator-01
+      host: 10.0.0.1
+    - name: generator-02
+      host: 10.0.0.2

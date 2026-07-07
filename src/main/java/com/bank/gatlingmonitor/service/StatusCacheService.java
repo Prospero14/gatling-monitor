@@ -1,6 +1,7 @@
 package com.bank.gatlingmonitor.service;
 
 import com.bank.gatlingmonitor.model.GeneratorStatus;
+import com.bank.gatlingmonitor.model.SshCredentials;
 import com.bank.gatlingmonitor.model.StatusSnapshot;
 import com.bank.gatlingmonitor.util.CredentialRejectionDetector;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StatusCacheService {
 
   private final GeneratorMonitorService generatorMonitorService;
+  private final CredentialStoreService credentialStoreService;
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private final AtomicBoolean updating = new AtomicBoolean(false);
   private final AtomicInteger completedGenerators = new AtomicInteger(0);
@@ -24,8 +26,11 @@ public class StatusCacheService {
   private volatile List<GeneratorStatus> statuses = List.of();
   private volatile Instant checkedAt;
 
-  public StatusCacheService(GeneratorMonitorService generatorMonitorService) {
+  public StatusCacheService(
+      GeneratorMonitorService generatorMonitorService,
+      CredentialStoreService credentialStoreService) {
     this.generatorMonitorService = generatorMonitorService;
+    this.credentialStoreService = credentialStoreService;
   }
 
   public StatusSnapshot getSnapshot(boolean autoRefreshEnabled) {
@@ -48,12 +53,13 @@ public class StatusCacheService {
         progress,
         completed,
         total,
+        credentialStoreService.hasCredentials(),
         current.stream().filter(GeneratorStatus::isBusy).count(),
         current.stream().filter(status -> status.isReachable() && !status.isBusy()).count(),
         current.stream().filter(status -> !status.isReachable()).count());
   }
 
-  public boolean startRefresh() {
+  public boolean startRefresh(SshCredentials credentials) {
     if (!updating.compareAndSet(false, true)) {
       return false;
     }
@@ -67,17 +73,25 @@ public class StatusCacheService {
           try {
             List<GeneratorStatus> fresh =
                 generatorMonitorService.collectStatuses(
-                    completed -> completedGenerators.set(completed));
+                    credentials, completed -> completedGenerators.set(completed));
             if (CredentialRejectionDetector.isCredentialsRejected(fresh)) {
               return;
             }
             statuses = fresh;
             checkedAt = Instant.now();
+            credentialStoreService.save(credentials);
           } finally {
             completedGenerators.set(totalGenerators.get());
             updating.set(false);
           }
         });
     return true;
+  }
+
+  public boolean startAutoRefresh() {
+    return credentialStoreService
+        .get()
+        .map(this::startRefresh)
+        .orElse(false);
   }
 }

@@ -1,5 +1,7 @@
 package com.bank.gatlingmonitor.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -12,6 +14,7 @@ public class StatusSnapshot {
   private final int progressPercent;
   private final int completedGenerators;
   private final int totalGenerators;
+  private final boolean hasLastCredentials;
   private final long busyCount;
   private final long freeCount;
   private final long offlineCount;
@@ -24,6 +27,7 @@ public class StatusSnapshot {
       int progressPercent,
       int completedGenerators,
       int totalGenerators,
+      boolean hasLastCredentials,
       long busyCount,
       long freeCount,
       long offlineCount) {
@@ -34,9 +38,55 @@ public class StatusSnapshot {
     this.progressPercent = progressPercent;
     this.completedGenerators = completedGenerators;
     this.totalGenerators = totalGenerators;
+    this.hasLastCredentials = hasLastCredentials;
     this.busyCount = busyCount;
     this.freeCount = freeCount;
     this.offlineCount = offlineCount;
+  }
+
+  public List<GeneratorStatus> getStatuses() {
+    return statuses;
+  }
+
+  public Instant getCheckedAt() {
+    return checkedAt;
+  }
+
+  @JsonProperty("updating")
+  public boolean isUpdating() {
+    return updating;
+  }
+
+  public boolean isAutoRefreshEnabled() {
+    return autoRefreshEnabled;
+  }
+
+  public int getProgressPercent() {
+    return progressPercent;
+  }
+
+  public int getCompletedGenerators() {
+    return completedGenerators;
+  }
+
+  public int getTotalGenerators() {
+    return totalGenerators;
+  }
+
+  public boolean isHasLastCredentials() {
+    return hasLastCredentials;
+  }
+
+  public long getBusyCount() {
+    return busyCount;
+  }
+
+  public long getFreeCount() {
+    return freeCount;
+  }
+
+  public long getOfflineCount() {
+    return offlineCount;
   }
 
   public List<GeneratorStatus> statuses() {
@@ -59,12 +109,8 @@ public class StatusSnapshot {
     return progressPercent;
   }
 
-  public int completedGenerators() {
-    return completedGenerators;
-  }
-
-  public int totalGenerators() {
-    return totalGenerators;
+  public boolean hasLastCredentials() {
+    return hasLastCredentials;
   }
 
   public long busyCount() {

@@ -11,7 +11,9 @@ class AutoRefreshServiceTest {
   @Test
   void canBeEnabledAndDisabled() {
     GeneratorMonitorService monitorService = mock(GeneratorMonitorService.class);
-    StatusCacheService cacheService = new StatusCacheService(monitorService);
+    CredentialStoreService credentialStoreService = new CredentialStoreService();
+    StatusCacheService cacheService =
+        new StatusCacheService(monitorService, credentialStoreService);
     AutoRefreshService autoRefreshService = new AutoRefreshService(cacheService);
 
     assertFalse(autoRefreshService.isEnabled());

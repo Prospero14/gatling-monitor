@@ -1,6 +1,7 @@
 package com.bank.gatlingmonitor.service;
 
 import com.bank.gatlingmonitor.config.MonitorProperties;
+import com.bank.gatlingmonitor.model.SshCredentials;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -25,8 +26,29 @@ public class SshConnectionService {
     this.monitorProperties = monitorProperties;
   }
 
-  public String execute(String host) throws JSchException, IOException, InterruptedException {
-    Session session = openSession(host);
+  public boolean canAuthenticateAny(SshCredentials credentials) {
+    return monitorProperties.getGenerators().stream()
+        .anyMatch(generator -> canAuthenticate(generator.getHost(), credentials));
+  }
+
+  public boolean canAuthenticate(String host, SshCredentials credentials) {
+    Session session = null;
+    try {
+      session = openSession(host, credentials);
+      session.connect(monitorProperties.getSsh().getConnectTimeoutMs());
+      return session.isConnected();
+    } catch (JSchException ex) {
+      return false;
+    } finally {
+      if (session != null) {
+        session.disconnect();
+      }
+    }
+  }
+
+  public String execute(String host, SshCredentials credentials)
+      throws JSchException, IOException, InterruptedException {
+    Session session = openSession(host, credentials);
     session.connect(monitorProperties.getSsh().getConnectTimeoutMs());
 
     try {
@@ -64,11 +86,11 @@ public class SshConnectionService {
     }
   }
 
-  private Session openSession(String host) throws JSchException {
+  private Session openSession(String host, SshCredentials credentials) throws JSchException {
     MonitorProperties.Ssh ssh = monitorProperties.getSsh();
     JSch jsch = new JSch();
-    Session session = jsch.getSession(ssh.getUsername(), host, ssh.getPort());
-    session.setPassword(ssh.getPassword());
+    Session session = jsch.getSession(credentials.getUsername(), host, ssh.getPort());
+    session.setPassword(credentials.getPassword());
     session.setConfig("StrictHostKeyChecking", "no");
     return session;
   }

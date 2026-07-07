@@ -7,6 +7,35 @@
   <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
+<div id="auth-overlay" class="popup-overlay">
+  <div class="popup popup-auth">
+    <h2 class="popup-title">SSH-доступ</h2>
+    <p class="popup-hint">Креды шифруются перед отправкой</p>
+    <form id="auth-form" class="login-form">
+      <label>
+        <span>Логин</span>
+        <input type="text" id="ssh-username" autocomplete="username" required>
+      </label>
+      <label>
+        <span>Пароль</span>
+        <input type="password" id="ssh-password" autocomplete="current-password" required>
+      </label>
+      <p class="auth-error" id="auth-error"></p>
+      <div class="popup-actions">
+        <button type="button" class="popup-btn" onclick="closeAuthModal()">Отмена</button>
+        <button type="submit" class="btn-primary" id="auth-submit-btn">Обновить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="error-overlay" class="popup-overlay">
+  <div class="popup">
+    <p class="popup-text" th:text="${authErrorMessage}">эх, ты, простофиля, креды проверь!</p>
+    <button type="button" class="popup-btn" onclick="closeErrorPopup()">Ладно...</button>
+  </div>
+</div>
+
 <div class="page">
   <div id="updating-banner" class="updating-banner" th:classappend="${updating} ? 'visible' : ''">
     <span class="pulse"></span>
@@ -43,6 +72,9 @@
         <span class="toggle-label">Обновлять раз в 2 часа</span>
       </label>
     </form>
+    <span class="auto-refresh-hint" th:if="${autoRefreshEnabled and !hasLastCredentials}">
+      Сначала выполните ручное обновление — креды сохранятся для авто-режима
+    </span>
   </section>
 
   <section class="stats">
@@ -110,12 +142,31 @@
 <script th:inline="javascript">
   const initiallyUpdating = [[${updating}]];
   let pollTimer = null;
-  let wasUpdating = initiallyUpdating;
+  let refreshPending = initiallyUpdating;
+  let cachedPublicKey = null;
 
   function submitAutoRefresh(checkbox) {
     const hidden = document.getElementById('auto-refresh-hidden');
     hidden.disabled = checkbox.checked;
     document.getElementById('auto-refresh-form').submit();
+  }
+
+  function openAuthModal() {
+    document.getElementById('auth-error').textContent = '';
+    document.getElementById('auth-overlay').classList.add('visible');
+    document.getElementById('ssh-username').focus();
+  }
+
+  function closeAuthModal() {
+    document.getElementById('auth-overlay').classList.remove('visible');
+  }
+
+  function showErrorPopup() {
+    document.getElementById('error-overlay').classList.add('visible');
+  }
+
+  function closeErrorPopup() {
+    document.getElementById('error-overlay').classList.remove('visible');
   }
 
   function setProgressVisible(visible) {
@@ -135,38 +186,106 @@
     document.getElementById('progress-pct').textContent = percent + '%';
   }
 
-  async function startRefresh() {
-    const refreshBtn = document.getElementById('refresh-btn');
-    if (refreshBtn && refreshBtn.disabled) {
-      return;
-    }
-
-    setUpdatingUi(true);
-    updateProgress(0);
-
-    try {
-      const response = await fetch('/api/refresh', { method: 'POST' });
-      if (!response.ok) {
-        setUpdatingUi(false);
-        return;
-      }
-      const data = await response.json();
-      if (!data.started) {
-        setUpdatingUi(false);
-        return;
-      }
-      wasUpdating = true;
-      schedulePoll(300);
-    } catch (e) {
-      setUpdatingUi(false);
-    }
-  }
-
   function schedulePoll(delayMs) {
     if (pollTimer) {
       clearTimeout(pollTimer);
     }
     pollTimer = setTimeout(pollStatus, delayMs);
+  }
+
+  async function loadPublicKey() {
+    if (cachedPublicKey) {
+      return cachedPublicKey;
+    }
+    const response = await fetch('/api/auth/public-key');
+    if (!response.ok) {
+      throw new Error('public key unavailable');
+    }
+    const data = await response.json();
+    cachedPublicKey = data.publicKey;
+    return cachedPublicKey;
+  }
+
+  function base64ToBytes(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  function bytesToBase64(bytes) {
+    let binary = '';
+    bytes.forEach(byte => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary);
+  }
+
+  async function encryptCredentials(username, password) {
+    const publicKeyBase64 = await loadPublicKey();
+    const keyData = base64ToBytes(publicKeyBase64);
+    const publicKey = await crypto.subtle.importKey(
+      'spki',
+      keyData,
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      false,
+      ['encrypt']
+    );
+    const plain = new TextEncoder().encode(JSON.stringify({ username, password }));
+    const encrypted = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, plain);
+    return bytesToBase64(new Uint8Array(encrypted));
+  }
+
+  async function submitEncryptedRefresh(username, password) {
+    const submitBtn = document.getElementById('auth-submit-btn');
+    submitBtn.disabled = true;
+    document.getElementById('auth-error').textContent = '';
+
+    try {
+      const payload = await encryptCredentials(username, password);
+      closeAuthModal();
+
+      refreshPending = true;
+      setUpdatingUi(true);
+      updateProgress(0);
+
+      const response = await fetch('/api/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload })
+      });
+
+      if (!response.ok) {
+        refreshPending = false;
+        setUpdatingUi(false);
+        showErrorPopup();
+        return;
+      }
+
+      const data = await response.json();
+      if (data.authFailed) {
+        refreshPending = false;
+        setUpdatingUi(false);
+        showErrorPopup();
+        return;
+      }
+      if (!data.started) {
+        refreshPending = false;
+        setUpdatingUi(false);
+        return;
+      }
+
+      schedulePoll(400);
+    } catch (e) {
+      refreshPending = false;
+      setUpdatingUi(false);
+      document.getElementById('auth-error').textContent = 'Не удалось отправить креды';
+      document.getElementById('auth-overlay').classList.add('visible');
+    } finally {
+      submitBtn.disabled = false;
+    }
   }
 
   async function pollStatus() {
@@ -176,31 +295,48 @@
         schedulePoll(1000);
         return;
       }
-      const data = await response.json();
-      updateProgress(data.progressPercent || 0);
-      setUpdatingUi(data.updating);
 
-      if (data.updating) {
-        wasUpdating = true;
+      const data = await response.json();
+      const updating = data.updating === true;
+      const percent = typeof data.progressPercent === 'number' ? data.progressPercent : 0;
+
+      updateProgress(percent);
+      setUpdatingUi(refreshPending || updating);
+
+      if (updating) {
         schedulePoll(500);
         return;
       }
 
-      if (wasUpdating) {
+      if (refreshPending) {
         updateProgress(100);
         window.location.reload();
-        return;
       }
     } catch (e) {
       schedulePoll(1000);
     }
   }
 
-  document.getElementById('refresh-btn').addEventListener('click', startRefresh);
+  document.getElementById('refresh-btn').addEventListener('click', () => {
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn.disabled) {
+      return;
+    }
+    openAuthModal();
+  });
+
+  document.getElementById('auth-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const username = document.getElementById('ssh-username').value.trim();
+    const password = document.getElementById('ssh-password').value;
+    if (!username || !password) {
+      return;
+    }
+    submitEncryptedRefresh(username, password);
+  });
 
   if (initiallyUpdating) {
-    wasUpdating = true;
-    schedulePoll(300);
+    schedulePoll(400);
   }
 </script>
 </body>
