@@ -1,0 +1,19 @@
+server:
+  port: 8080
+
+spring:
+  thymeleaf:
+    cache: false
+
+monitor:
+  ssh:
+    port: 22
+    connect-timeout-ms: 10000
+    command-timeout-ms: 15000
+  generators:
+    - name: generator-01
+      host: 10.0.0.1
+    - name: generator-02
+      host: 10.0.0.2
+    - name: generator-03
+      host: 10.0.0.3

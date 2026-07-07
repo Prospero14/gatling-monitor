@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gatling Monitor — Preview</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="page">
+  <header class="header">
+    <div class="mascot-wrap">
+      <img class="mascot" src="/img/mascot.png" alt="Gatling Monitor" width="130" height="130">
+    </div>
+    <div class="title-block">
+      <h1>GATLING MONITOR</h1>
+      <p class="subtitle">// общий статус генераторов · ручное и авто-обновление</p>
+    </div>
+    <form class="logout-form">
+      <button type="button" class="logout-btn">ВЫХОД</button>
+    </form>
+  </header>
+
+  <section class="auto-refresh-bar">
+    <form class="auto-refresh-form">
+      <label class="toggle">
+        <input type="checkbox" checked>
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">Обновлять раз в 2 часа</span>
+      </label>
+    </form>
+  </section>
+
+  <section class="stats">
+    <div class="stat">
+      <span class="stat-label">Занято</span>
+      <span class="stat-value">1</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Свободно</span>
+      <span class="stat-value">1</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Недоступно</span>
+      <span class="stat-value">1</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span>GEN_STATUS :: SHARED_CACHE</span>
+      <button type="button" class="refresh-btn">↻ ОБНОВИТЬ СТАТУСЫ</button>
+    </div>
+    <table>
+      <thead>
+      <tr>
+        <th>Генератор</th>
+        <th>Хост</th>
+        <th>Статус</th>
+        <th>Симуляция</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td class="mono">generator-01</td>
+        <td class="mono">10.0.0.1</td>
+        <td><span class="badge status-busy">ЗАНЯТ</span></td>
+        <td class="simulation mono">.efsFinmonMob.FinmonmobSimulationSTAB</td>
+      </tr>
+      <tr>
+        <td class="mono">generator-02</td>
+        <td class="mono">10.0.0.2</td>
+        <td><span class="badge status-free">СВОБОДЕН</span></td>
+        <td class="simulation mono">—</td>
+      </tr>
+      <tr>
+        <td class="mono">generator-03</td>
+        <td class="mono">10.0.0.3</td>
+        <td><span class="badge status-auth-failed">не удалось авторизоваться</span></td>
+        <td class="simulation mono">—</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="footer">
+    <span>last_update: 2026-07-08 09:15:42 UTC</span>
+  </footer>
+</div>
+</body>
+</html>
