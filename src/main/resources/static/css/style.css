@@ -273,6 +273,43 @@ body::before {
   margin: 0;
 }
 
+.refresh-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.refresh-progress {
+  display: none;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--cyan);
+}
+
+.refresh-progress.visible {
+  display: flex;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(77, 232, 255, 0.2);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.progress-pct {
+  min-width: 2.5rem;
+  text-align: right;
+}
+
 .logout-form {
   margin: 0;
 }

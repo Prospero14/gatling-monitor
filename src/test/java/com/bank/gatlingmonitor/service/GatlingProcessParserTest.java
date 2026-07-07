@@ -14,10 +14,8 @@ class GatlingProcessParserTest {
   @Test
   void parsesSimulationClassFromJavaProcess() {
     String psOutput =
-        """
-        loaduser  12345  1.0  5.0  java -Dgatling.simulationClass=simulations.efsFinmonMob.FinmonmobSimulationSTAB -jar gatling.jar
-        loaduser  99999  0.0  0.0  grep java
-        """;
+        "loaduser  12345  1.0  5.0  java -Dgatling.simulationClass=simulations.efsFinmonMob.FinmonmobSimulationSTAB -jar gatling.jar\n"
+            + "loaduser  99999  0.0  0.0  grep java\n";
 
     List<String> result = parser.parse(psOutput);
 
@@ -28,10 +26,8 @@ class GatlingProcessParserTest {
   @Test
   void parsesMultipleSimulations() {
     String psOutput =
-        """
-        user  1  java -Dgatling.simulationClass=simulations.pkg.FirstSimulation
-        user  2  java -Dgatling.simulationClass=simulations.pkg.SecondSimulation
-        """;
+        "user  1  java -Dgatling.simulationClass=simulations.pkg.FirstSimulation\n"
+            + "user  2  java -Dgatling.simulationClass=simulations.pkg.SecondSimulation\n";
 
     List<String> result = parser.parse(psOutput);
 

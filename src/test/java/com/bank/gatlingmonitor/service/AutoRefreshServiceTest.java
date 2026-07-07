@@ -4,13 +4,14 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 class AutoRefreshServiceTest {
 
   @Test
   void canBeEnabledAndDisabled() {
-    StatusCacheService cacheService =
-        new StatusCacheService(() -> java.util.List.of());
+    GeneratorMonitorService monitorService = mock(GeneratorMonitorService.class);
+    StatusCacheService cacheService = new StatusCacheService(monitorService);
     AutoRefreshService autoRefreshService = new AutoRefreshService(cacheService);
 
     assertFalse(autoRefreshService.isEnabled());

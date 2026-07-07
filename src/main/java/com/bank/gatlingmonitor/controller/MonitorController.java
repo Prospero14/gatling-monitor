@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Controller
 public class MonitorController {
 
@@ -38,6 +41,14 @@ public class MonitorController {
     return "redirect:/";
   }
 
+  @PostMapping("/api/refresh")
+  @ResponseBody
+  public Map<String, Object> refreshApi() {
+    Map<String, Object> body = new HashMap<>();
+    body.put("started", statusCacheService.startRefresh());
+    return body;
+  }
+
   @PostMapping("/auto-refresh")
   public String toggleAutoRefresh(@RequestParam("enabled") boolean enabled) {
     autoRefreshService.setEnabled(enabled);
@@ -55,6 +66,7 @@ public class MonitorController {
     model.addAttribute("statuses", snapshot.statuses());
     model.addAttribute("checkedAt", snapshot.checkedAt());
     model.addAttribute("updating", snapshot.updating());
+    model.addAttribute("progressPercent", snapshot.progressPercent());
     model.addAttribute("autoRefreshEnabled", snapshot.autoRefreshEnabled());
     model.addAttribute("busyCount", snapshot.busyCount());
     model.addAttribute("freeCount", snapshot.freeCount());

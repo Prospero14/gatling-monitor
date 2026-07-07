@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntConsumer;
 
 @Service
 public class GeneratorMonitorService {
@@ -25,10 +26,19 @@ public class GeneratorMonitorService {
     this.gatlingProcessParser = gatlingProcessParser;
   }
 
+  public int getGeneratorCount() {
+    return monitorProperties.getGenerators().size();
+  }
+
   public List<GeneratorStatus> collectStatuses() {
+    return collectStatuses(completed -> {});
+  }
+
+  public List<GeneratorStatus> collectStatuses(IntConsumer onGeneratorCompleted) {
     List<GeneratorStatus> statuses = new ArrayList<>();
     for (MonitorProperties.Generator generator : monitorProperties.getGenerators()) {
       statuses.add(checkGenerator(generator));
+      onGeneratorCompleted.accept(statuses.size());
     }
     return statuses;
   }

@@ -34,7 +34,7 @@ mvn clean package -DskipTests
 java -jar target/gatling-monitor-1.0.0.jar
 ```
 
-http://localhost:8080
+http://localhost:8088
 
 ## UI
 

@@ -63,11 +63,15 @@
   <section class="panel">
     <div class="panel-head">
       <span>GEN_STATUS :: SHARED_CACHE</span>
-      <form th:action="@{/refresh}" method="post" class="refresh-form">
-        <button type="submit" class="refresh-btn" id="refresh-btn" th:disabled="${updating}">
+      <div class="refresh-controls">
+        <div id="refresh-progress" class="refresh-progress" th:classappend="${updating} ? 'visible' : ''">
+          <span class="spinner"></span>
+          <span class="progress-pct" id="progress-pct" th:text="${progressPercent} + '%'">0%</span>
+        </div>
+        <button type="button" class="refresh-btn" id="refresh-btn" th:disabled="${updating}">
           ↻ ОБНОВИТЬ СТАТУСЫ
         </button>
-      </form>
+      </div>
     </div>
     <table>
       <thead>
@@ -105,6 +109,8 @@
 
 <script th:inline="javascript">
   const initiallyUpdating = [[${updating}]];
+  let pollTimer = null;
+  let wasUpdating = initiallyUpdating;
 
   function submitAutoRefresh(checkbox) {
     const hidden = document.getElementById('auto-refresh-hidden');
@@ -112,82 +118,89 @@
     document.getElementById('auto-refresh-form').submit();
   }
 
-  function setUpdating(active) {
-    const banner = document.getElementById('updating-banner');
+  function setProgressVisible(visible) {
+    document.getElementById('refresh-progress').classList.toggle('visible', visible);
+    document.getElementById('updating-banner').classList.toggle('visible', visible);
+  }
+
+  function setUpdatingUi(active) {
     const refreshBtn = document.getElementById('refresh-btn');
-    banner.classList.toggle('visible', active);
+    setProgressVisible(active);
     if (refreshBtn) {
       refreshBtn.disabled = active;
     }
   }
 
-  function statusClass(item) {
-    if (item.authFailed) return 'status-auth-failed';
-    if (!item.reachable) return 'status-offline';
-    return item.busy ? 'status-busy' : 'status-free';
+  function updateProgress(percent) {
+    document.getElementById('progress-pct').textContent = percent + '%';
   }
 
-  function statusLabel(item) {
-    if (item.authFailed) return 'не удалось авторизоваться';
-    if (!item.reachable) return 'НЕДОСТУПЕН';
-    return item.busy ? 'ЗАНЯТ' : 'СВОБОДЕН';
-  }
-
-  function renderTable(statuses) {
-    const body = document.getElementById('status-body');
-    if (!statuses || statuses.length === 0) {
-      body.innerHTML = '<tr><td colspan="4" class="empty-row">Нет сохранённых данных. Нажмите «Обновить статусы».</td></tr>';
+  async function startRefresh() {
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn && refreshBtn.disabled) {
       return;
     }
-    body.innerHTML = statuses.map(item => {
-      const error = !item.reachable && !item.authFailed && item.error
-        ? `<div class="error-text">${escapeHtml(item.error)}</div>` : '';
-      return `<tr>
-        <td class="mono">${escapeHtml(item.name)}</td>
-        <td class="mono">${escapeHtml(item.host)}</td>
-        <td><span class="badge ${statusClass(item)}">${statusLabel(item)}</span>${error}</td>
-        <td class="simulation mono">${escapeHtml(item.simulationsText || '—')}</td>
-      </tr>`;
-    }).join('');
+
+    setUpdatingUi(true);
+    updateProgress(0);
+
+    try {
+      const response = await fetch('/api/refresh', { method: 'POST' });
+      if (!response.ok) {
+        setUpdatingUi(false);
+        return;
+      }
+      const data = await response.json();
+      if (!data.started) {
+        setUpdatingUi(false);
+        return;
+      }
+      wasUpdating = true;
+      schedulePoll(300);
+    } catch (e) {
+      setUpdatingUi(false);
+    }
   }
 
-  function escapeHtml(value) {
-    return String(value)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
-  }
-
-  function formatCheckedAt(value) {
-    if (!value) return 'last_update: —';
-    const date = new Date(value);
-    const pad = n => String(n).padStart(2, '0');
-    return `last_update: ${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} `
-      + `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())} UTC`;
+  function schedulePoll(delayMs) {
+    if (pollTimer) {
+      clearTimeout(pollTimer);
+    }
+    pollTimer = setTimeout(pollStatus, delayMs);
   }
 
   async function pollStatus() {
     try {
       const response = await fetch('/api/status');
-      if (!response.ok) return;
+      if (!response.ok) {
+        schedulePoll(1000);
+        return;
+      }
       const data = await response.json();
-      document.getElementById('busy-count').textContent = data.busyCount;
-      document.getElementById('free-count').textContent = data.freeCount;
-      document.getElementById('offline-count').textContent = data.offlineCount;
-      document.getElementById('checked-at').textContent = formatCheckedAt(data.checkedAt);
-      renderTable(data.statuses);
-      setUpdating(data.updating);
+      updateProgress(data.progressPercent || 0);
+      setUpdatingUi(data.updating);
+
       if (data.updating) {
-        setTimeout(pollStatus, 1000);
+        wasUpdating = true;
+        schedulePoll(500);
+        return;
+      }
+
+      if (wasUpdating) {
+        updateProgress(100);
+        window.location.reload();
+        return;
       }
     } catch (e) {
-      setTimeout(pollStatus, 2000);
+      schedulePoll(1000);
     }
   }
 
+  document.getElementById('refresh-btn').addEventListener('click', startRefresh);
+
   if (initiallyUpdating) {
-    pollStatus();
+    wasUpdating = true;
+    schedulePoll(300);
   }
 </script>
 </body>
