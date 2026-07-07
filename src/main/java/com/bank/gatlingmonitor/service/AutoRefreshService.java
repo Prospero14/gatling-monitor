@@ -30,6 +30,6 @@ public class AutoRefreshService {
     if (!enabled.get()) {
       return;
     }
-    statusCacheService.startAutoRefresh();
+    statusCacheService.startRefresh();
   }
 }

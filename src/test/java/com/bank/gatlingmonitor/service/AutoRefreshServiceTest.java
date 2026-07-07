@@ -1,6 +1,5 @@
 package com.bank.gatlingmonitor.service;
 
-import com.bank.gatlingmonitor.model.SshCredentials;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -11,7 +10,7 @@ class AutoRefreshServiceTest {
   @Test
   void canBeEnabledAndDisabled() {
     StatusCacheService cacheService =
-        new StatusCacheService(credentials -> java.util.List.of());
+        new StatusCacheService(() -> java.util.List.of());
     AutoRefreshService autoRefreshService = new AutoRefreshService(cacheService);
 
     assertFalse(autoRefreshService.isEnabled());
@@ -19,15 +18,5 @@ class AutoRefreshServiceTest {
     assertTrue(autoRefreshService.isEnabled());
     autoRefreshService.setEnabled(false);
     assertFalse(autoRefreshService.isEnabled());
-  }
-
-  @Test
-  void autoRefreshWithoutSavedCredentialsDoesNotStart() {
-    StatusCacheService cacheService =
-        new StatusCacheService(credentials -> java.util.List.of());
-    AutoRefreshService autoRefreshService = new AutoRefreshService(cacheService);
-
-    autoRefreshService.setEnabled(true);
-    assertFalse(cacheService.startAutoRefresh());
   }
 }

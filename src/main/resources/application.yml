@@ -7,6 +7,8 @@ spring:
 
 monitor:
   ssh:
+    username: loaduser
+    password: changeme
     port: 22
     connect-timeout-ms: 10000
     command-timeout-ms: 15000

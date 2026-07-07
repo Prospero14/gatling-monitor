@@ -7,20 +7,13 @@
   <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
-<div id="popup-overlay" class="popup-overlay">
-  <div class="popup">
-    <p class="popup-text" id="popup-text" th:text="${popupMessage}">эх, ты, простофиля, креды проверь!</p>
-    <button type="button" class="popup-btn" onclick="closePopup()">Ладно...</button>
-  </div>
-</div>
-
 <div class="page">
   <div id="updating-banner" class="updating-banner" th:classappend="${updating} ? 'visible' : ''">
     <span class="pulse"></span>
     обновление статусов
   </div>
 
-  <header class="header">
+  <header class="header header-main">
     <div class="mascot-wrap">
       <img class="mascot"
            th:src="@{/img/mascot.png}"
@@ -34,15 +27,10 @@
       <h1>GATLING MONITOR</h1>
       <p class="subtitle">// общий статус генераторов · ручное и авто-обновление</p>
     </div>
-    <form th:action="@{/logout}" method="post" class="logout-form">
-      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <button type="submit" class="logout-btn">ВЫХОД</button>
-    </form>
   </header>
 
   <section class="auto-refresh-bar">
     <form th:action="@{/auto-refresh}" method="post" class="auto-refresh-form" id="auto-refresh-form">
-      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
       <input type="hidden" name="enabled" value="false" id="auto-refresh-hidden">
       <label class="toggle">
         <input type="checkbox"
@@ -55,10 +43,6 @@
         <span class="toggle-label">Обновлять раз в 2 часа</span>
       </label>
     </form>
-    <span class="auto-refresh-hint"
-          th:if="${autoRefreshEnabled and !hasLastCredentials}">
-      Сначала выполните ручное обновление — сохранятся креды для авто-режима
-    </span>
   </section>
 
   <section class="stats">
@@ -80,7 +64,6 @@
     <div class="panel-head">
       <span>GEN_STATUS :: SHARED_CACHE</span>
       <form th:action="@{/refresh}" method="post" class="refresh-form">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
         <button type="submit" class="refresh-btn" id="refresh-btn" th:disabled="${updating}">
           ↻ ОБНОВИТЬ СТАТУСЫ
         </button>
@@ -127,14 +110,6 @@
     const hidden = document.getElementById('auto-refresh-hidden');
     hidden.disabled = checkbox.checked;
     document.getElementById('auto-refresh-form').submit();
-  }
-
-  function closePopup() {
-    document.getElementById('popup-overlay').classList.remove('visible');
-  }
-
-  function showPopup() {
-    document.getElementById('popup-overlay').classList.add('visible');
   }
 
   function setUpdating(active) {
@@ -203,9 +178,6 @@
       document.getElementById('checked-at').textContent = formatCheckedAt(data.checkedAt);
       renderTable(data.statuses);
       setUpdating(data.updating);
-      if (data.credentialsRejected) {
-        showPopup();
-      }
       if (data.updating) {
         setTimeout(pollStatus, 1000);
       }

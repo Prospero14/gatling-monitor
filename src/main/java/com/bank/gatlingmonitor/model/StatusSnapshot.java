@@ -7,9 +7,7 @@ public record StatusSnapshot(
     List<GeneratorStatus> statuses,
     Instant checkedAt,
     boolean updating,
-    boolean credentialsRejected,
     boolean autoRefreshEnabled,
-    boolean hasLastCredentials,
     long busyCount,
     long freeCount,
     long offlineCount) {}

@@ -38,6 +38,12 @@ public class MonitorProperties {
 
   public static class Ssh {
 
+    @NotBlank
+    private String username;
+
+    @NotBlank
+    private String password;
+
     @Positive
     private int port = 22;
 
@@ -46,6 +52,22 @@ public class MonitorProperties {
 
     @Positive
     private int commandTimeoutMs = 15_000;
+
+    public String getUsername() {
+      return username;
+    }
+
+    public void setUsername(String username) {
+      this.username = username;
+    }
+
+    public String getPassword() {
+      return password;
+    }
+
+    public void setPassword(String password) {
+      this.password = password;
+    }
 
     public int getPort() {
       return port;

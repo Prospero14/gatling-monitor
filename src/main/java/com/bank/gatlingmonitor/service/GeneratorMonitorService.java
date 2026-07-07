@@ -2,8 +2,8 @@ package com.bank.gatlingmonitor.service;
 
 import com.bank.gatlingmonitor.config.MonitorProperties;
 import com.bank.gatlingmonitor.model.GeneratorStatus;
-import com.bank.gatlingmonitor.model.SshCredentials;
 import com.bank.gatlingmonitor.util.AuthErrors;
+import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,19 +25,18 @@ public class GeneratorMonitorService {
     this.gatlingProcessParser = gatlingProcessParser;
   }
 
-  public List<GeneratorStatus> collectStatuses(SshCredentials credentials) {
+  public List<GeneratorStatus> collectStatuses() {
     List<GeneratorStatus> statuses = new ArrayList<>();
     for (MonitorProperties.Generator generator : monitorProperties.getGenerators()) {
-      statuses.add(checkGenerator(generator, credentials));
+      statuses.add(checkGenerator(generator));
     }
     return statuses;
   }
 
-  private GeneratorStatus checkGenerator(
-      MonitorProperties.Generator generator, SshCredentials credentials) {
+  private GeneratorStatus checkGenerator(MonitorProperties.Generator generator) {
     Instant checkedAt = Instant.now();
     try {
-      String psOutput = sshConnectionService.execute(generator.getHost(), credentials);
+      String psOutput = sshConnectionService.execute(generator.getHost());
       List<String> simulations = gatlingProcessParser.parse(psOutput);
       return GeneratorStatus.ok(generator.getName(), generator.getHost(), simulations, checkedAt);
     } catch (Exception ex) {
